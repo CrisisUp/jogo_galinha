@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Galinha Atravessando a Rua</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <h1>Cross the Road: Chicken</h1>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        
+        <!-- Camada de Interface do Usuário -->
+        <div id="ui-layer">
+            <!-- Tela Inicial -->
+            <div id="start-screen" class="modal">
+                <h2>Pronto para Atravessar?</h2>
+                <button id="start-button">INICIAR JOGO</button>
+            </div>
+
+            <!-- Tela de Game Over -->
+            <div id="game-over-screen" class="modal hidden">
+                <h2>FIM DE JOGO</h2>
+                <p>A galinha não conseguiu chegar...</p>
+                <div class="final-score">Pontuação: <span id="final-score-val">0</span></div>
+                <button id="restart-button">TENTAR NOVAMENTE</button>
+            </div>
+        </div>
+    </div>
+    <div id="status">Vidas: <span id="lives-display">5</span> | Pontos: <span id="score-display">0</span></div>
+    <p>Use as SETAS para mover a galinha.</p>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>
