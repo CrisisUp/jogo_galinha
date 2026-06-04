@@ -9,6 +9,7 @@ import {
 import { EventEmitter } from './event-emitter.js';
 import { Chicken } from '../entities/chicken.js';
 import { VehicleFactory } from '../factories/vehicle-factory.js';
+import { Collectible } from '../entities/collectible.js';
 import { Renderer } from './renderer.js';
 
 /**
@@ -30,6 +31,7 @@ export class GameEngine extends EventEmitter {
 
     /** @type {Chicken} */ #player;
     /** @type {import('../entities/vehicle.js').Vehicle[]} */ #vehicles;
+    /** @type {Collectible[]} */ #collectibles;
 
     /**
      * Configura o motor do jogo.
@@ -55,6 +57,7 @@ export class GameEngine extends EventEmitter {
 
         this.#player = new Chicken(this.#assetLoader.images.chicken);
         this.#vehicles = [];
+        this.#collectibles = [];
 
         this.#init();
     }
@@ -62,6 +65,7 @@ export class GameEngine extends EventEmitter {
     // Getters para permitir acesso controlado em modo leitura se necessário (ex: Renderer)
     get player() { return this.#player; }
     get vehicles() { return this.#vehicles; }
+    get collectibles() { return this.#collectibles; }
 
     /**
      * Inicializa os componentes do jogo e inicia o loop principal.
@@ -69,6 +73,7 @@ export class GameEngine extends EventEmitter {
      */
     #init() {
         this.#spawnVehicles();
+        this.#spawnInitialCollectibles();
         this.#inputManager.on('command', (command) => this.#processCommand(command));
         this.#gameLoop();
     }
@@ -79,6 +84,8 @@ export class GameEngine extends EventEmitter {
     start() {
         this.#remainingLives = INITIAL_LIVES;
         this.#playerScore = 0;
+        this.#collectibles = [];
+        this.#spawnInitialCollectibles();
         this.#currentState = GAME_STATE.PLAYING;
     }
 
@@ -96,6 +103,35 @@ export class GameEngine extends EventEmitter {
                 this.#vehicles.push(vehicle);
             }
         });
+    }
+
+    /**
+     * Adiciona alguns itens coletáveis iniciais em zonas seguras.
+     * @private
+     */
+    #spawnInitialCollectibles() {
+        // Zonas seguras (linhas de grama): 4, 8, 12
+        const safeRows = [4, 8, 12];
+        safeRows.forEach(row => {
+            // Chance de spawnar um milho em cada zona segura no início
+            if (Math.random() > 0.3) {
+                this.#spawnCollectibleAtRow(row);
+            }
+        });
+    }
+
+    /**
+     * Cria um item coletável em uma linha específica.
+     * @param {number} row - O índice da linha na grade.
+     * @private
+     */
+    #spawnCollectibleAtRow(row) {
+        const col = Math.floor(Math.random() * 8) + 1; // Colunas 1 a 8 para não ficar muito no canto
+        const x = col * GRID_CELL_SIZE + 5;
+        const y = row * GRID_CELL_SIZE + 5;
+        const sprite = this.#assetLoader.images.corn;
+        
+        this.#collectibles.push(new Collectible(x, y, sprite, 50));
     }
 
     /**
@@ -133,6 +169,13 @@ export class GameEngine extends EventEmitter {
             this.emit('scoreUpdate', this.#playerScore);
             this.#increaseDifficulty();
             this.#player.reset();
+            
+            // Spawn de novo item ao completar nível (pequena chance)
+            if (Math.random() > 0.5) {
+                const safeRows = [4, 8, 12];
+                const randomRow = safeRows[Math.floor(Math.random() * safeRows.length)];
+                this.#spawnCollectibleAtRow(randomRow);
+            }
         }
     }
 
@@ -170,16 +213,39 @@ export class GameEngine extends EventEmitter {
     }
 
     /**
-     * Verifica colisões entre o jogador e todos os veículos.
+     * Verifica colisões entre o jogador e veículos ou itens coletáveis.
      * @private
      */
     #checkCollisions() {
+        // Colisão com Veículos
         for (const vehicle of this.#vehicles) {
             if (this.#isColliding(this.#player, vehicle)) {
                 this.#handlePlayerHit();
                 break;
             }
         }
+
+        // Colisão com Itens Coletáveis
+        for (let i = this.#collectibles.length - 1; i >= 0; i--) {
+            const item = this.#collectibles[i];
+            if (this.#isColliding(this.#player, item)) {
+                this.#handleItemCollection(i);
+            }
+        }
+    }
+
+    /**
+     * Gerencia a coleta de um item.
+     * @param {number} index - Índice do item no array.
+     * @private
+     */
+    #handleItemCollection(index) {
+        const item = this.#collectibles[index];
+        this.#playerScore += item.value;
+        this.#collectibles.splice(index, 1);
+        
+        this.emit('collect');
+        this.emit('scoreUpdate', this.#playerScore);
     }
 
     /**
@@ -230,6 +296,6 @@ export class GameEngine extends EventEmitter {
      * @private
      */
     #render() {
-        this.#renderer.renderFrame(this.#player, this.#vehicles);
+        this.#renderer.renderFrame(this.#player, this.#vehicles, this.#collectibles);
     }
 }

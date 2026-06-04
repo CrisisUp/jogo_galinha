@@ -68,10 +68,14 @@ export class Renderer {
      * Orquestra a renderização completa de um quadro do jogo.
      * @param {import('../entities/chicken.js').Chicken} player - A instância do jogador.
      * @param {import('../entities/vehicle.js').Vehicle[]} vehicles - A lista de veículos.
+     * @param {import('../entities/collectible.js').Collectible[]} collectibles - A lista de itens coletáveis.
      */
-    renderFrame(player, vehicles) {
+    renderFrame(player, vehicles, collectibles) {
         this.clear();
         this.drawBackground();
+        
+        // Renderiza os itens coletáveis
+        collectibles.forEach(item => item.render(this.ctx));
         
         // Renderiza os veículos
         vehicles.forEach(vehicle => vehicle.render(this.ctx));

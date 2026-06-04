@@ -12,6 +12,7 @@ export class AssetLoader {
         /** @type {Object} Mapeamento de emojis para nomes de sprites */
         this.emojiMap = {
             chicken: '🐔',
+            corn: '🌽',
             car1: '🚗',
             car2: '🏎️',
             car3: '🚓',

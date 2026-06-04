@@ -51,6 +51,12 @@ export class AudioManager {
         });
     }
 
+    /** Som de coleta de item (agudo e rápido) */
+    playCollect() {
+        this.playSound(880, 'sine', 0.15, 0.1);
+        setTimeout(() => this.playSound(1320, 'sine', 0.15, 0.1), 50);
+    }
+
     /** Som de impacto para colisão */
     playHit() {
         this.playSound(150, 'square', 0.2, 0.1);

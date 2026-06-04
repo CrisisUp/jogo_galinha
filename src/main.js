@@ -79,6 +79,10 @@ window.onload = async () => {
         audioManager.playMove();
     });
 
+    game.on('collect', () => {
+        audioManager.playCollect();
+    });
+
     game.on('hit', () => {
         audioManager.playHit();
     });
