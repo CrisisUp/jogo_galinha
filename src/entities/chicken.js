@@ -2,7 +2,7 @@ import { GRID_CELL_SIZE, PLAYER_START_X_GRID, PLAYER_START_Y_GRID } from '../cor
 
 /**
  * Representa o jogador no jogo (a galinha).
- * Responsável por gerenciar sua posição, movimento e renderização.
+ * Responsável por gerenciar sua posição, movimento, física e renderização.
  */
 export class Chicken {
     /** @type {number} */ #x;
@@ -10,6 +10,12 @@ export class Chicken {
     /** @type {number} */ #width;
     /** @type {number} */ #height;
     /** @type {HTMLImageElement} */ #sprite;
+    
+    // Propriedades de Física
+    /** @type {number} */ #vx = 0;
+    /** @type {number} */ #vy = 0;
+    /** @type {number} */ #rotation = 0;
+    /** @type {boolean} */ #isKnockedBack = false;
 
     /**
      * Inicializa o jogador com dimensões padrão e reseta sua posição.
@@ -38,16 +44,34 @@ export class Chicken {
     reset() {
         this.#x = PLAYER_START_X_GRID * GRID_CELL_SIZE;
         this.#y = PLAYER_START_Y_GRID * GRID_CELL_SIZE;
+        this.#vx = 0;
+        this.#vy = 0;
+        this.#rotation = 0;
+        this.#isKnockedBack = false;
     }
 
     /**
-     * Move o jogador com base em um deslocamento relativo, respeitando os limites do canvas.
-     * @param {number} dx - Deslocamento horizontal em pixels.
-     * @param {number} dy - Deslocamento vertical em pixels.
-     * @param {number} canvasWidth - Largura total da área de jogo.
-     * @param {number} canvasHeight - Altura total da área de jogo.
+     * Aplica uma força de impacto (knockback) na galinha.
+     * @param {number} vx - Velocidade X inicial do impacto.
+     * @param {number} vy - Velocidade Y inicial do impacto.
+     */
+    applyKnockback(vx, vy) {
+        this.#vx = vx;
+        this.#vy = vy;
+        this.#isKnockedBack = true;
+    }
+
+    /**
+     * Move o jogador com base em um deslocamento relativo.
+     * Ignora se estiver em estado de knockback.
+     * @param {number} dx 
+     * @param {number} dy 
+     * @param {number} canvasWidth 
+     * @param {number} canvasHeight 
      */
     move(dx, dy, canvasWidth, canvasHeight) {
+        if (this.#isKnockedBack) return;
+
         const nextX = this.#x + dx;
         const nextY = this.#y + dy;
 
@@ -60,18 +84,51 @@ export class Chicken {
     }
 
     /**
-     * Renderiza o jogador no contexto gráfico fornecido.
-     * @param {CanvasRenderingContext2D} ctx - O contexto de renderização 2D do canvas.
+     * Atualiza a física da galinha (movimento e fricção).
+     * @param {number} canvasWidth 
+     * @param {number} canvasHeight 
+     */
+    update(canvasWidth, canvasHeight) {
+        if (!this.#isKnockedBack) return;
+
+        // Aplica velocidade à posição
+        this.#x += this.#vx;
+        this.#y += this.#vy;
+
+        // Efeito de rotação (capotagem)
+        this.#rotation += this.#vx * 0.1;
+
+        // Fricção (desaceleração gradual)
+        this.#vx *= 0.92;
+        this.#vy *= 0.92;
+
+        // Limites da tela durante o voo
+        if (this.#x < 0) { this.#x = 0; this.#vx *= -0.5; }
+        if (this.#x > canvasWidth - this.#width) { this.#x = canvasWidth - this.#width; this.#vx *= -0.5; }
+        if (this.#y < 0) { this.#y = 0; this.#vy *= -0.5; }
+        if (this.#y > canvasHeight - this.#height) { this.#y = canvasHeight - this.#height; this.#vy *= -0.5; }
+    }
+
+    /**
+     * Renderiza o jogador com suporte a rotação.
+     * @param {CanvasRenderingContext2D} ctx 
      */
     render(ctx) {
-        if (this.#sprite) {
-            ctx.drawImage(this.#sprite, this.#x, this.#y, this.#width, this.#height);
-        } else {
-            // Fallback: Retângulo Amarelo
-            ctx.fillStyle = '#FFD700';
-            ctx.fillRect(this.#x, this.#y, this.#width, this.#height);
-            ctx.fillStyle = "black";
-            ctx.fillRect(this.#x + 10, this.#y + 10, 5, 5);
+        ctx.save();
+        
+        // Translada e rotaciona se houver impacto
+        ctx.translate(this.#x + this.#width / 2, this.#y + this.#height / 2);
+        if (this.#isKnockedBack) {
+            ctx.rotate(this.#rotation);
         }
+
+        if (this.#sprite) {
+            ctx.drawImage(this.#sprite, -this.#width / 2, -this.#height / 2, this.#width, this.#height);
+        } else {
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(-this.#width / 2, -this.#height / 2, this.#width, this.#height);
+        }
+
+        ctx.restore();
     }
 }

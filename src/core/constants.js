@@ -46,5 +46,6 @@ export const INITIAL_SIGNAL_CREDITS = 1;
 export const GAME_STATE = {
     MENU: 'MENU',
     PLAYING: 'PLAYING',
+    PLAYER_HIT: 'PLAYER_HIT',
     GAME_OVER: 'GAME_OVER'
 };

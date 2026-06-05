@@ -18,6 +18,9 @@
             <!-- Tela Inicial -->
             <div id="start-screen" class="modal">
                 <h2>Pronto para Atravessar?</h2>
+                <div class="input-group">
+                    <input type="text" id="player-name" placeholder="Seu Nome" maxlength="15">
+                </div>
                 <button id="start-button">INICIAR JOGO</button>
             </div>
 
@@ -26,6 +29,12 @@
                 <h2>FIM DE JOGO</h2>
                 <p>A galinha não conseguiu chegar...</p>
                 <div class="final-score">Pontuação: <span id="final-score-val">0</span></div>
+                
+                <div id="leaderboard">
+                    <h3>RANKING TOP 5</h3>
+                    <ul id="leaderboard-list"></ul>
+                </div>
+
                 <button id="restart-button">TENTAR NOVAMENTE</button>
             </div>
         </div>

@@ -2,6 +2,7 @@ import { GameEngine } from './core/game-engine.js';
 import { AssetLoader } from './core/asset-loader.js';
 import { AudioManager } from './core/audio-manager.js';
 import { InputManager } from './core/input-manager.js';
+import { StorageManager } from './core/storage-manager.js';
 import { LEVEL_1 } from './core/levels.js';
 
 /**
@@ -17,6 +18,8 @@ window.onload = async () => {
     const startScreen = document.getElementById("start-screen");
     const gameOverScreen = document.getElementById("game-over-screen");
     const finalScoreVal = document.getElementById("final-score-val");
+    const leaderboardList = document.getElementById("leaderboard-list");
+    const playerNameInput = document.getElementById("player-name");
     
     const startButton = document.getElementById("start-button");
     const restartButton = document.getElementById("restart-button");
@@ -25,6 +28,7 @@ window.onload = async () => {
     const audioManager = new AudioManager();
     const assetLoader = new AssetLoader();
     const inputManager = new InputManager();
+    const storageManager = new StorageManager();
 
     startButton.disabled = true;
     startButton.innerText = "CARREGANDO...";
@@ -53,6 +57,16 @@ window.onload = async () => {
     const hideAllScreens = () => {
         startScreen.classList.add('hidden');
         gameOverScreen.classList.add('hidden');
+    };
+
+    const renderLeaderboard = () => {
+        const leaderboard = storageManager.getLeaderboard();
+        leaderboardList.innerHTML = leaderboard.map(entry => `
+            <li>
+                <span>${entry.name}</span>
+                <span>${entry.score} pts</span>
+            </li>
+        `).join('');
     };
 
     startButton.addEventListener('click', () => {
@@ -101,6 +115,14 @@ window.onload = async () => {
 
     game.on('gameOver', (finalScore) => {
         finalScoreVal.innerText = finalScore;
+        
+        // Salva pontuação
+        const playerName = playerNameInput.value.trim() || "Anônimo";
+        storageManager.saveScore(playerName, finalScore);
+        
+        // Renderiza ranking
+        renderLeaderboard();
+        
         gameOverScreen.classList.remove('hidden');
         audioManager.playGameOver();
     });

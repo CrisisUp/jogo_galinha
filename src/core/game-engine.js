@@ -163,6 +163,7 @@ export class GameEngine extends EventEmitter {
      * @private
      */
     #processCommand(command) {
+        // Ignora comandos se não estiver jogando
         if (this.#currentState !== GAME_STATE.PLAYING) return;
 
         if (command === 'SIGNAL') {
@@ -241,10 +242,7 @@ export class GameEngine extends EventEmitter {
      */
     #gameLoop() {
         this.#render();
-
-        if (this.#currentState === GAME_STATE.PLAYING) {
-            this.#update();
-        }
+        this.#update();
         
         this.#animationFrameId = requestAnimationFrame(() => this.#gameLoop());
     }
@@ -254,13 +252,18 @@ export class GameEngine extends EventEmitter {
      * @private
      */
     #update() {
-        // Apenas move veículos se o sinal não estiver ativo
-        if (!this.#isSignalActive) {
-            this.#vehicles.forEach(v => {
-                v.update(this.#canvas.width);
-            });
+        // Atualiza a física da galinha sempre (importante para knockback)
+        this.#player.update(this.#canvas.width, this.#canvas.height);
+
+        if (this.#currentState === GAME_STATE.PLAYING) {
+            // Apenas move veículos se o sinal não estiver ativo
+            if (!this.#isSignalActive) {
+                this.#vehicles.forEach(v => {
+                    v.update(this.#canvas.width);
+                });
+            }
+            this.#checkCollisions();
         }
-        this.#checkCollisions();
     }
 
     /**
@@ -271,7 +274,7 @@ export class GameEngine extends EventEmitter {
         // Colisão com Veículos
         for (const vehicle of this.#vehicles) {
             if (this.#isColliding(this.#player, vehicle)) {
-                this.#handlePlayerHit();
+                this.#handlePlayerHit(vehicle);
                 break;
             }
         }
@@ -320,19 +323,43 @@ export class GameEngine extends EventEmitter {
     }
 
     /**
-     * Gerencia o evento de quando o jogador é atingido por um veículo.
+     * Gerencia o impacto da colisão, aplicando knockback e aguardando para resetar.
+     * @param {import('../entities/vehicle.js').Vehicle} vehicle - O veículo que atingiu a galinha.
      * @private
      */
-    #handlePlayerHit() {
+    #handlePlayerHit(vehicle) {
+        // Muda estado para ignorar inputs
+        this.#currentState = GAME_STATE.PLAYER_HIT;
+        
+        this.emit('hit');
+
+        // Calcula força do impacto baseada no veículo
+        const forceX = vehicle.speed * vehicle.direction * 5;
+        const forceY = 15; // Joga um pouco para baixo
+        this.#player.applyKnockback(forceX, forceY);
+
+        // Feedback visual do renderer
+        this.#renderer.flashHitEffect();
+
+        // Aguarda a "animação" de impacto terminar para processar a perda de vida
+        setTimeout(() => {
+            this.#processLifeLoss();
+        }, 700);
+    }
+
+    /**
+     * Subtrai uma vida e decide se acaba o jogo ou reseta a posição.
+     * @private
+     */
+    #processLifeLoss() {
         this.#remainingLives--;
         this.emit('livesUpdate', this.#remainingLives);
-        this.emit('hit');
 
         if (this.#remainingLives <= 0) {
             this.#endGame();
         } else {
-            this.#renderer.flashHitEffect();
             this.#player.reset();
+            this.#currentState = GAME_STATE.PLAYING;
         }
     }
 
