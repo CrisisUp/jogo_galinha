@@ -23,7 +23,8 @@ export class GameEngine extends EventEmitter {
     /** @type {HTMLCanvasElement} */ #canvas;
     /** @type {import('./asset-loader.js').AssetLoader} */ #assetLoader;
     /** @type {import('./input-manager.js').InputManager} */ #inputManager;
-    /** @type {Object[]} */ #laneConfigurations;
+    /** @type {Object[][]} */ #levels;
+    /** @type {Object[]} */ #currentLaneConfigurations;
     /** @type {Renderer} */ #renderer;
     
     /** @type {number} */ #remainingLives;
@@ -33,6 +34,10 @@ export class GameEngine extends EventEmitter {
     /** @type {number|null} */ #signalTimeoutId;
     /** @type {string} */ #currentState;
     /** @type {number|null} */ #animationFrameId;
+
+    /** @type {number} */ #currentLevelIndex = 0;
+    /** @type {number} */ #crossingsInCurrentLevel = 0;
+    /** @type {number} */ #GOAL_CROSSINGS_PER_LEVEL = 3;
 
     /** @type {Chicken} */ #player;
     /** @type {import('../entities/vehicle.js').Vehicle[]} */ #vehicles;
@@ -44,14 +49,17 @@ export class GameEngine extends EventEmitter {
      * @param {HTMLCanvasElement} config.canvas - O elemento canvas onde o jogo será desenhado.
      * @param {import('./asset-loader.js').AssetLoader} config.assetLoader - O carregador de assets.
      * @param {import('./input-manager.js').InputManager} config.inputManager - O gerenciador de entradas.
-     * @param {Object[]} config.level - Configuração das faixas do nível atual.
+     * @param {Object[][]} config.levels - Lista de níveis.
      */
     constructor(config) {
         super();
         this.#canvas = config.canvas;
         this.#assetLoader = config.assetLoader;
         this.#inputManager = config.inputManager;
-        this.#laneConfigurations = config.level;
+        this.#levels = config.levels;
+        
+        this.#currentLevelIndex = 0;
+        this.#currentLaneConfigurations = this.#levels[this.#currentLevelIndex];
         
         this.#renderer = new Renderer(this.#canvas);
 
@@ -70,7 +78,7 @@ export class GameEngine extends EventEmitter {
         this.#init();
     }
 
-    // Getters para permitir acesso controlado em modo leitura se necessário (ex: Renderer)
+    // Getters para permitir acesso controlado em modo leitura
     get player() { return this.#player; }
     get vehicles() { return this.#vehicles; }
     get collectibles() { return this.#collectibles; }
@@ -94,15 +102,21 @@ export class GameEngine extends EventEmitter {
         this.#remainingLives = INITIAL_LIVES;
         this.#playerScore = 0;
         this.#signalCredits = INITIAL_SIGNAL_CREDITS;
+        this.#currentLevelIndex = 0;
+        this.#crossingsInCurrentLevel = 0;
+        this.#currentLaneConfigurations = this.#levels[this.#currentLevelIndex];
+        
         this.#isSignalActive = false;
         if (this.#signalTimeoutId) clearTimeout(this.#signalTimeoutId);
         
         this.#collectibles = [];
+        this.#spawnVehicles();
         this.#spawnInitialCollectibles();
         this.#currentState = GAME_STATE.PLAYING;
 
-        // Avisa a UI sobre os créditos iniciais
+        // Avisa a UI sobre o estado inicial
         this.emit('signalUpdate', this.#signalCredits);
+        this.emit('levelChange', this.#currentLevelIndex + 1);
     }
 
     /**
@@ -111,7 +125,7 @@ export class GameEngine extends EventEmitter {
      */
     #spawnVehicles() {
         this.#vehicles = [];
-        this.#laneConfigurations.forEach(lane => {
+        this.#currentLaneConfigurations.forEach(lane => {
             const vehiclesPerLane = Math.floor(Math.random() * 2) + 1;
             for (let i = 0; i < vehiclesPerLane; i++) {
                 const asset = this.#assetLoader.getRandomVehicleAsset();
@@ -126,14 +140,11 @@ export class GameEngine extends EventEmitter {
      * @private
      */
     #spawnInitialCollectibles() {
-        // Zonas seguras (linhas de grama): 4, 8, 12
         const safeRows = [4, 8, 12];
         safeRows.forEach(row => {
-            // Chance de spawnar um milho em cada zona segura no início
             if (Math.random() > 0.3) {
                 this.#spawnCollectibleAtRow(row, 'SCORE');
             }
-            // Chance menor de spawnar uma moeda de sinal
             if (Math.random() > 0.7) {
                 this.#spawnCollectibleAtRow(row, 'CREDIT');
             }
@@ -142,8 +153,8 @@ export class GameEngine extends EventEmitter {
 
     /**
      * Cria um item coletável em uma linha específica.
-     * @param {number} row - O índice da linha na grade.
-     * @param {string} type - Tipo do item ('SCORE' ou 'CREDIT').
+     * @param {number} row 
+     * @param {string} type 
      * @private
      */
     #spawnCollectibleAtRow(row, type) {
@@ -159,11 +170,10 @@ export class GameEngine extends EventEmitter {
 
     /**
      * Processa um comando de entrada semântico.
-     * @param {string} command - O comando a ser executado.
+     * @param {string} command 
      * @private
      */
     #processCommand(command) {
-        // Ignora comandos se não estiver jogando
         if (this.#currentState !== GAME_STATE.PLAYING) return;
 
         if (command === 'SIGNAL') {
@@ -199,7 +209,6 @@ export class GameEngine extends EventEmitter {
             this.emit('signalUpdate', this.#signalCredits);
             this.emit('signalActivated');
 
-            // Agenda a desativação
             this.#signalTimeoutId = setTimeout(() => {
                 this.#isSignalActive = false;
                 this.emit('signalDeactivated');
@@ -215,10 +224,18 @@ export class GameEngine extends EventEmitter {
         if (this.#player.y === 0) {
             this.#playerScore += POINTS_PER_LEVEL;
             this.emit('scoreUpdate', this.#playerScore);
-            this.#increaseDifficulty();
+            
+            this.#crossingsInCurrentLevel++;
+            
+            if (this.#crossingsInCurrentLevel >= this.#GOAL_CROSSINGS_PER_LEVEL) {
+                this.#advanceLevel();
+            } else {
+                this.#increaseDifficulty();
+            }
+            
             this.#player.reset();
             
-            // Spawn de novo item ao completar nível (pequena chance)
+            // Spawn de novo item
             if (Math.random() > 0.5) {
                 const safeRows = [4, 8, 12];
                 const randomRow = safeRows[Math.floor(Math.random() * safeRows.length)];
@@ -226,6 +243,25 @@ export class GameEngine extends EventEmitter {
                 this.#spawnCollectibleAtRow(randomRow, type);
             }
         }
+    }
+
+    /**
+     * Avança para a próxima fase disponível.
+     * @private
+     */
+    #advanceLevel() {
+        // Se houver próxima fase, avança. Se não, reinicia o contador e aumenta a dificuldade base.
+        if (this.#currentLevelIndex < this.#levels.length - 1) {
+            this.#currentLevelIndex++;
+        }
+        
+        this.#crossingsInCurrentLevel = 0;
+        this.#currentLaneConfigurations = this.#levels[this.#currentLevelIndex];
+        
+        // Limpa e recria veículos para o novo layout
+        this.#spawnVehicles();
+        
+        this.emit('levelChange', this.#currentLevelIndex + 1);
     }
 
     /**
@@ -252,11 +288,9 @@ export class GameEngine extends EventEmitter {
      * @private
      */
     #update() {
-        // Atualiza a física da galinha sempre (importante para knockback)
         this.#player.update(this.#canvas.width, this.#canvas.height);
 
         if (this.#currentState === GAME_STATE.PLAYING) {
-            // Apenas move veículos se o sinal não estiver ativo
             if (!this.#isSignalActive) {
                 this.#vehicles.forEach(v => {
                     v.update(this.#canvas.width);
@@ -271,7 +305,6 @@ export class GameEngine extends EventEmitter {
      * @private
      */
     #checkCollisions() {
-        // Colisão com Veículos
         for (const vehicle of this.#vehicles) {
             if (this.#isColliding(this.#player, vehicle)) {
                 this.#handlePlayerHit(vehicle);
@@ -279,7 +312,6 @@ export class GameEngine extends EventEmitter {
             }
         }
 
-        // Colisão com Itens Coletáveis
         for (let i = this.#collectibles.length - 1; i >= 0; i--) {
             const item = this.#collectibles[i];
             if (this.#isColliding(this.#player, item)) {
@@ -290,7 +322,7 @@ export class GameEngine extends EventEmitter {
 
     /**
      * Gerencia a coleta de um item.
-     * @param {number} index - Índice do item no array.
+     * @param {number} index 
      * @private
      */
     #handleItemCollection(index) {
@@ -309,10 +341,10 @@ export class GameEngine extends EventEmitter {
     }
 
     /**
-     * Algoritmo de colisão AABB (Axis-Aligned Bounding Box).
-     * @param {Object} rectA - Primeiro retângulo.
-     * @param {Object} rectB - Segundo retângulo.
-     * @returns {boolean} True se houver colisão.
+     * Algoritmo de colisão AABB.
+     * @param {Object} rectA 
+     * @param {Object} rectB 
+     * @returns {boolean} 
      * @private
      */
     #isColliding(rectA, rectB) {
@@ -323,32 +355,26 @@ export class GameEngine extends EventEmitter {
     }
 
     /**
-     * Gerencia o impacto da colisão, aplicando knockback e aguardando para resetar.
-     * @param {import('../entities/vehicle.js').Vehicle} vehicle - O veículo que atingiu a galinha.
+     * Gerencia o impacto da colisão.
+     * @param {import('../entities/vehicle.js').Vehicle} vehicle 
      * @private
      */
     #handlePlayerHit(vehicle) {
-        // Muda estado para ignorar inputs
         this.#currentState = GAME_STATE.PLAYER_HIT;
-        
         this.emit('hit');
 
-        // Calcula força do impacto baseada no veículo
         const forceX = vehicle.speed * vehicle.direction * 5;
-        const forceY = 15; // Joga um pouco para baixo
+        const forceY = 15;
         this.#player.applyKnockback(forceX, forceY);
-
-        // Feedback visual do renderer
         this.#renderer.flashHitEffect();
 
-        // Aguarda a "animação" de impacto terminar para processar a perda de vida
         setTimeout(() => {
             this.#processLifeLoss();
         }, 700);
     }
 
     /**
-     * Subtrai uma vida e decide se acaba o jogo ou reseta a posição.
+     * Subtrai uma vida.
      * @private
      */
     #processLifeLoss() {
@@ -364,7 +390,7 @@ export class GameEngine extends EventEmitter {
     }
 
     /**
-     * Encerra o jogo e emite o evento de fim de jogo.
+     * Encerra o jogo.
      * @private
      */
     #endGame() {
@@ -377,7 +403,7 @@ export class GameEngine extends EventEmitter {
     }
 
     /**
-     * Orquestra a renderização de todos os elementos visuais delegando ao Renderer.
+     * Orquestra a renderização.
      * @private
      */
     #render() {

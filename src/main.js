@@ -3,7 +3,7 @@ import { AssetLoader } from './core/asset-loader.js';
 import { AudioManager } from './core/audio-manager.js';
 import { InputManager } from './core/input-manager.js';
 import { StorageManager } from './core/storage-manager.js';
-import { LEVEL_1 } from './core/levels.js';
+import { LEVELS } from './core/levels.js';
 
 /**
  * Ponto de entrada da aplicação.
@@ -15,6 +15,7 @@ window.onload = async () => {
     const livesDisplay = document.getElementById("lives-display");
     const scoreDisplay = document.getElementById("score-display");
     const creditsDisplay = document.getElementById("credits-display");
+    const levelDisplay = document.getElementById("level-display");
     const startScreen = document.getElementById("start-screen");
     const gameOverScreen = document.getElementById("game-over-screen");
     const finalScoreVal = document.getElementById("final-score-val");
@@ -46,7 +47,7 @@ window.onload = async () => {
         canvas: document.getElementById("gameCanvas"),
         assetLoader: assetLoader,
         inputManager: inputManager,
-        level: LEVEL_1
+        levels: LEVELS
     };
 
     /** @type {GameEngine} Instância principal do motor do jogo */
@@ -87,6 +88,11 @@ window.onload = async () => {
 
     game.on('signalUpdate', (newCredits) => {
         creditsDisplay.innerText = newCredits;
+    });
+
+    game.on('levelChange', (levelNumber) => {
+        levelDisplay.innerText = levelNumber;
+        audioManager.playLevelUp();
     });
 
     game.on('livesUpdate', (remainingLives) => {

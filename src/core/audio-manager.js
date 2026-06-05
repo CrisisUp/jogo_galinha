@@ -51,6 +51,14 @@ export class AudioManager {
         });
     }
 
+    /** Som de transição de fase (vários bipes ascendentes) */
+    playLevelUp() {
+        const freqs = [523.25, 659.25, 783.99, 1046.50];
+        freqs.forEach((f, i) => {
+            setTimeout(() => this.playSound(f, 'sine', 0.4, 0.1), i * 150);
+        });
+    }
+
     /** Som de coleta de item (agudo e rápido) */
     playCollect() {
         this.playSound(880, 'sine', 0.15, 0.1);
