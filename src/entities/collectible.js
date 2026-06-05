@@ -10,19 +10,22 @@ export class Collectible {
     /** @type {number} */ #height;
     /** @type {HTMLImageElement} */ #sprite;
     /** @type {number} */ #value;
+    /** @type {string} */ #type;
 
     /**
      * @param {number} x - Posição X.
      * @param {number} y - Posição Y.
      * @param {HTMLImageElement} sprite - Imagem do item.
+     * @param {string} type - Tipo do item ('SCORE' ou 'CREDIT').
      * @param {number} value - Valor em pontos ao coletar.
      */
-    constructor(x, y, sprite, value = 50) {
+    constructor(x, y, sprite, type = 'SCORE', value = 50) {
         this.#x = x;
         this.#y = y;
         this.#width = GRID_CELL_SIZE - 10;
         this.#height = GRID_CELL_SIZE - 10;
         this.#sprite = sprite;
+        this.#type = type;
         this.#value = value;
     }
 
@@ -36,6 +39,8 @@ export class Collectible {
     get height() { return this.#height; }
     /** @returns {number} Valor do item */
     get value() { return this.#value; }
+    /** @returns {string} Tipo do item */
+    get type() { return this.#type; }
 
     /**
      * Renderiza o item coletável.

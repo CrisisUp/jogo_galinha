@@ -17,7 +17,8 @@ export class InputManager extends EventEmitter {
             'ArrowLeft': 'LEFT',
             'a': 'LEFT',
             'ArrowRight': 'RIGHT',
-            'd': 'RIGHT'
+            'd': 'RIGHT',
+            ' ': 'SIGNAL'
         };
     }
 

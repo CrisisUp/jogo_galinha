@@ -13,6 +13,7 @@ window.onload = async () => {
     // Referências aos elementos da UI
     const livesDisplay = document.getElementById("lives-display");
     const scoreDisplay = document.getElementById("score-display");
+    const creditsDisplay = document.getElementById("credits-display");
     const startScreen = document.getElementById("start-screen");
     const gameOverScreen = document.getElementById("game-over-screen");
     const finalScoreVal = document.getElementById("final-score-val");
@@ -68,7 +69,10 @@ window.onload = async () => {
     
     game.on('scoreUpdate', (newScore) => {
         scoreDisplay.innerText = newScore;
-        audioManager.playScore();
+    });
+
+    game.on('signalUpdate', (newCredits) => {
+        creditsDisplay.innerText = newCredits;
     });
 
     game.on('livesUpdate', (remainingLives) => {
@@ -79,8 +83,16 @@ window.onload = async () => {
         audioManager.playMove();
     });
 
-    game.on('collect', () => {
-        audioManager.playCollect();
+    game.on('collect', (type) => {
+        if (type === 'CREDIT') {
+            audioManager.playCollectCredit();
+        } else {
+            audioManager.playCollect();
+        }
+    });
+
+    game.on('signalActivated', () => {
+        audioManager.playSignalActivate();
     });
 
     game.on('hit', () => {

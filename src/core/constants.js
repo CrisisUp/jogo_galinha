@@ -33,6 +33,12 @@ export const COLOR_GRASS = "#228B22";
 /** @type {string} Cor das linhas de faixa da rua */
 export const COLOR_LANE_MARKING = "rgba(255, 255, 255, 0.5)";
 
+/** @type {number} Duração do semáforo ativo em milissegundos */
+export const SIGNAL_DURATION_MS = 3000;
+
+/** @type {number} Quantidade inicial de créditos de semáforo */
+export const INITIAL_SIGNAL_CREDITS = 1;
+
 /**
  * Estados Possíveis do Jogo
  * @enum {string}

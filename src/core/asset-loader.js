@@ -13,6 +13,7 @@ export class AssetLoader {
         this.emojiMap = {
             chicken: '🐔',
             corn: '🌽',
+            coin: '🪙',
             car1: '🚗',
             car2: '🏎️',
             car3: '🚓',

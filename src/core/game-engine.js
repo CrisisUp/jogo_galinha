@@ -4,7 +4,9 @@ import {
     DIFFICULTY_MULTIPLIER, 
     FPS, 
     GAME_STATE,
-    GRID_CELL_SIZE 
+    GRID_CELL_SIZE,
+    INITIAL_SIGNAL_CREDITS,
+    SIGNAL_DURATION_MS
 } from './constants.js';
 import { EventEmitter } from './event-emitter.js';
 import { Chicken } from '../entities/chicken.js';
@@ -26,6 +28,9 @@ export class GameEngine extends EventEmitter {
     
     /** @type {number} */ #remainingLives;
     /** @type {number} */ #playerScore;
+    /** @type {number} */ #signalCredits;
+    /** @type {boolean} */ #isSignalActive;
+    /** @type {number|null} */ #signalTimeoutId;
     /** @type {string} */ #currentState;
     /** @type {number|null} */ #animationFrameId;
 
@@ -52,6 +57,9 @@ export class GameEngine extends EventEmitter {
 
         this.#remainingLives = INITIAL_LIVES;
         this.#playerScore = 0;
+        this.#signalCredits = INITIAL_SIGNAL_CREDITS;
+        this.#isSignalActive = false;
+        this.#signalTimeoutId = null;
         this.#currentState = GAME_STATE.MENU;
         this.#animationFrameId = null;
 
@@ -66,6 +74,7 @@ export class GameEngine extends EventEmitter {
     get player() { return this.#player; }
     get vehicles() { return this.#vehicles; }
     get collectibles() { return this.#collectibles; }
+    get isSignalActive() { return this.#isSignalActive; }
 
     /**
      * Inicializa os componentes do jogo e inicia o loop principal.
@@ -84,9 +93,16 @@ export class GameEngine extends EventEmitter {
     start() {
         this.#remainingLives = INITIAL_LIVES;
         this.#playerScore = 0;
+        this.#signalCredits = INITIAL_SIGNAL_CREDITS;
+        this.#isSignalActive = false;
+        if (this.#signalTimeoutId) clearTimeout(this.#signalTimeoutId);
+        
         this.#collectibles = [];
         this.#spawnInitialCollectibles();
         this.#currentState = GAME_STATE.PLAYING;
+
+        // Avisa a UI sobre os créditos iniciais
+        this.emit('signalUpdate', this.#signalCredits);
     }
 
     /**
@@ -115,7 +131,11 @@ export class GameEngine extends EventEmitter {
         safeRows.forEach(row => {
             // Chance de spawnar um milho em cada zona segura no início
             if (Math.random() > 0.3) {
-                this.#spawnCollectibleAtRow(row);
+                this.#spawnCollectibleAtRow(row, 'SCORE');
+            }
+            // Chance menor de spawnar uma moeda de sinal
+            if (Math.random() > 0.7) {
+                this.#spawnCollectibleAtRow(row, 'CREDIT');
             }
         });
     }
@@ -123,24 +143,32 @@ export class GameEngine extends EventEmitter {
     /**
      * Cria um item coletável em uma linha específica.
      * @param {number} row - O índice da linha na grade.
+     * @param {string} type - Tipo do item ('SCORE' ou 'CREDIT').
      * @private
      */
-    #spawnCollectibleAtRow(row) {
-        const col = Math.floor(Math.random() * 8) + 1; // Colunas 1 a 8 para não ficar muito no canto
+    #spawnCollectibleAtRow(row, type) {
+        const col = Math.floor(Math.random() * 8) + 1; 
         const x = col * GRID_CELL_SIZE + 5;
         const y = row * GRID_CELL_SIZE + 5;
-        const sprite = this.#assetLoader.images.corn;
         
-        this.#collectibles.push(new Collectible(x, y, sprite, 50));
+        const sprite = type === 'CREDIT' ? this.#assetLoader.images.coin : this.#assetLoader.images.corn;
+        const value = type === 'CREDIT' ? 0 : 50;
+        
+        this.#collectibles.push(new Collectible(x, y, sprite, type, value));
     }
 
     /**
      * Processa um comando de entrada semântico.
-     * @param {string} command - O comando a ser executado ('UP', 'DOWN', etc).
+     * @param {string} command - O comando a ser executado.
      * @private
      */
     #processCommand(command) {
         if (this.#currentState !== GAME_STATE.PLAYING) return;
+
+        if (command === 'SIGNAL') {
+            this.#activateSignal();
+            return;
+        }
 
         let dx = 0;
         let dy = 0;
@@ -160,6 +188,25 @@ export class GameEngine extends EventEmitter {
     }
 
     /**
+     * Ativa o semáforo se houver créditos disponíveis.
+     * @private
+     */
+    #activateSignal() {
+        if (this.#signalCredits > 0 && !this.#isSignalActive) {
+            this.#signalCredits--;
+            this.#isSignalActive = true;
+            this.emit('signalUpdate', this.#signalCredits);
+            this.emit('signalActivated');
+
+            // Agenda a desativação
+            this.#signalTimeoutId = setTimeout(() => {
+                this.#isSignalActive = false;
+                this.emit('signalDeactivated');
+            }, SIGNAL_DURATION_MS);
+        }
+    }
+
+    /**
      * Verifica se o jogador chegou ao final da travessia.
      * @private
      */
@@ -174,7 +221,8 @@ export class GameEngine extends EventEmitter {
             if (Math.random() > 0.5) {
                 const safeRows = [4, 8, 12];
                 const randomRow = safeRows[Math.floor(Math.random() * safeRows.length)];
-                this.#spawnCollectibleAtRow(randomRow);
+                const type = Math.random() > 0.8 ? 'CREDIT' : 'SCORE';
+                this.#spawnCollectibleAtRow(randomRow, type);
             }
         }
     }
@@ -206,9 +254,12 @@ export class GameEngine extends EventEmitter {
      * @private
      */
     #update() {
-        this.#vehicles.forEach(v => {
-            v.update(this.#canvas.width);
-        });
+        // Apenas move veículos se o sinal não estiver ativo
+        if (!this.#isSignalActive) {
+            this.#vehicles.forEach(v => {
+                v.update(this.#canvas.width);
+            });
+        }
         this.#checkCollisions();
     }
 
@@ -241,11 +292,17 @@ export class GameEngine extends EventEmitter {
      */
     #handleItemCollection(index) {
         const item = this.#collectibles[index];
-        this.#playerScore += item.value;
-        this.#collectibles.splice(index, 1);
         
-        this.emit('collect');
-        this.emit('scoreUpdate', this.#playerScore);
+        if (item.type === 'CREDIT') {
+            this.#signalCredits++;
+            this.emit('signalUpdate', this.#signalCredits);
+        } else {
+            this.#playerScore += item.value;
+            this.emit('scoreUpdate', this.#playerScore);
+        }
+        
+        this.#collectibles.splice(index, 1);
+        this.emit('collect', item.type);
     }
 
     /**
@@ -288,6 +345,7 @@ export class GameEngine extends EventEmitter {
         if (this.#animationFrameId) {
             cancelAnimationFrame(this.#animationFrameId);
         }
+        if (this.#signalTimeoutId) clearTimeout(this.#signalTimeoutId);
         this.emit('gameOver', this.#playerScore);
     }
 
@@ -296,6 +354,6 @@ export class GameEngine extends EventEmitter {
      * @private
      */
     #render() {
-        this.#renderer.renderFrame(this.#player, this.#vehicles, this.#collectibles);
+        this.#renderer.renderFrame(this.#player, this.#vehicles, this.#collectibles, this.#isSignalActive);
     }
 }

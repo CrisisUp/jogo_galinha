@@ -57,6 +57,20 @@ export class AudioManager {
         setTimeout(() => this.playSound(1320, 'sine', 0.15, 0.1), 50);
     }
 
+    /** Som de coleta de crédito de sinal (moeda) */
+    playCollectCredit() {
+        this.playSound(660, 'sine', 0.1, 0.1);
+        setTimeout(() => this.playSound(880, 'sine', 0.2, 0.1), 100);
+    }
+
+    /** Som de ativação de semáforo (sirene ou alerta) */
+    playSignalActivate() {
+        const now = this.ctx.currentTime;
+        [880, 440, 880, 440].forEach((f, i) => {
+            setTimeout(() => this.playSound(f, 'square', 0.2, 0.05), i * 150);
+        });
+    }
+
     /** Som de impacto para colisão */
     playHit() {
         this.playSound(150, 'square', 0.2, 0.1);
