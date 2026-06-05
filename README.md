@@ -1,102 +1,85 @@
-# 🐔 Cross the Road: Chicken
+# 🐔 Cross the Road: Chicken - Advanced Edition
 
-Um jogo clássico de travessia, reimaginado com uma arquitetura de software robusta, padrões de design modernos e princípios rigorosos de **Clean Code**. O que começou como um script simples evoluiu para uma aplicação modular de nível corporativo.
+Um jogo clássico de travessia, reimaginado com uma arquitetura de software robusta, física dinâmica e mecânicas estratégicas de nível profissional. Este projeto demonstra a aplicação rigorosa de **Clean Code**, **SOLID** e padrões de design modernos.
 
 ---
 
-## 🚀 Tecnologias e Conceitos
+## 🚀 Tecnologias e Inovações
 
-- **Linguagem:** JavaScript Moderno (ES6+)
-- **Interface:** HTML5 Canvas API e CSS3 Custom Properties
-- **Áudio:** Web Audio API (Síntese sonora via código)
-- **Arquitetura:** Orientação a Objetos (OOP) com Campos Privados
-- **Documentação:** JSDoc para tipagem e contratos
-- **Performance:** Ciclo de vida baseado em `requestAnimationFrame`
+- **Módulos ES6+**: Arquitetura 100% modular e desacoplada.
+- **Física Dinâmica**: Sistema de vetores para movimentação e impacto (**Knockback**).
+- **Áudio Procedural**: Síntese sonora via **Web Audio API** (sem arquivos externos).
+- **Data-Driven Design**: Níveis e configurações definidos via objetos de dados.
+- **Persistência**: Sistema de Ranking local via **localStorage**.
+- **JSDoc**: Código totalmente documentado e tipado.
+
+---
+
+## 🎮 Mecânicas de Jogo
+
+### 🚦 Sistema de Semáforos
+Pressione a tecla **ESPAÇO** para ativar o sinal vermelho. O trânsito para por 3 segundos, permitindo uma travessia segura. Esta ação consome um "Crédito de Sinal".
+
+### 🪙 Economia e Itens
+- **Milho (🌽)**: Colete para ganhar **50 pontos** bônus instantaneamente.
+- **Moeda (🪙)**: Colete para ganhar **Créditos de Sinal** extras.
+
+### 📈 Progressão de Fases
+O jogo possui um sistema de progressão automático. A cada 3 travessias concluídas:
+- O nível aumenta (Fase 1 ➔ Fase 2 ➔ Fase 3).
+- O layout da pista muda (densidade e tipos de veículos).
+- A velocidade base do trânsito aumenta.
+
+### 💥 Física de Impacto (Knockback)
+Ao ser atingida, a galinha é arremessada na direção e velocidade do veículo, girando no ar antes de perder uma vida. Durante este estado de impacto, o controle do jogador é temporariamente bloqueado.
 
 ---
 
 ## 🏗️ Arquitetura e Design Patterns
 
-O grande diferencial deste projeto não é apenas a jogabilidade, mas a sua **fundação técnica**. Foram aplicados diversos padrões de design para garantir escalabilidade e manutenibilidade:
+### 1. **Encapsulamento Forte**
+Uso de campos privados do JavaScript (`#`) em todas as classes principais. O estado interno do motor e das entidades é blindado contra interferências externas.
 
-### 1. **Modularização (ES6 Modules)**
+### 2. **Observer Pattern**
+A comunicação entre o motor do jogo (`GameEngine`), a interface (UI) e o sistema de áudio é feita via eventos, garantindo que a lógica de jogo nunca precise conhecer detalhes da tela.
 
-O código é dividido em módulos especializados, eliminando o acoplamento global e facilitando a localização de responsabilidades.
+### 3. **Polimorfismo e Herança**
+Veículos são divididos em subclasses (`Car`, `Truck`, `Motorcycle`), cada uma com suas próprias propriedades físicas (motos são mais rápidas, caminhões são mais longos).
 
-### 2. **Observer Pattern (Desacoplamento de UI)**
-
-Utiliza uma classe `EventEmitter` para que a lógica do jogo se comunique com a interface sem conhecê-la. O jogo emite eventos (`scoreUpdate`, `gameOver`), e a camada de UI reage a eles.
-
-### 3. **Factory Pattern (Criação de Veículos)**
-
-A `VehicleFactory` centraliza a complexidade de instanciar diferentes tipos de obstáculos (`Car`, `Truck`, `Motorcycle`), permitindo expandir o jogo com novos inimigos sem alterar o motor principal.
-
-### 4. **State Pattern (Máquina de Estados)**
-
-Gerenciamento explícito dos estados do jogo (`MENU`, `PLAYING`, `GAME_OVER`), eliminando variáveis booleanas conflitantes e garantindo transições de tela seguras.
-
-### 5. **Input Manager (Abstração de Hardware)**
-
-Uma camada que traduz eventos físicos do teclado em comandos semânticos, permitindo que o jogo suporte futuramente Touch ou Gamepads sem mudanças na lógica interna.
-
-### 6. **Renderer (Separação de Preocupações)**
-
-Toda a interação com a API do Canvas é isolada na classe `Renderer`, deixando a `GameEngine` focada exclusivamente em regras de negócio e física.
-
-### 7. **Data-Driven Design**
-
-As configurações de níveis (`levels.js`) são separadas da lógica do motor, permitindo a criação de novas fases através de simples objetos de dados.
+### 4. **Factory Pattern**
+A criação de obstáculos é delegada à `VehicleFactory`, facilitando a expansão para novos tipos de veículos no futuro.
 
 ---
 
-## 🔒 Encapsulamento Defensivo
-
-O projeto utiliza a sintaxe moderna de **Campos Privados (`#`)**. Isso garante que o estado interno do jogo (pontuação, vidas, coordenadas) seja inacessível de fora das classes, prevenindo bugs por efeitos colaterais e protegendo a integridade dos dados. O acesso à leitura é feito estritamente através de *getters*.
-
----
-
-## 🎮 Como Jogar
-
-1. Abra o `index.html` em um servidor local (necessário para suporte a Módulos ES6).
-2. Use as **SETAS do teclado** ou as teclas **WASD** para mover a galinha.
-3. **Objetivo:** Chegar ao topo da tela (grama verde) para ganhar 10 pontos.
-4. **Desafio:** Evite ser atingido pelos carros, caminhões e motos.
-5. O jogo termina quando as 5 vidas se esgotam.
-
----
-
-## 📂 Estrutura do Projeto
+## 📂 Estrutura do Sistema
 
 ```text
 /
-├── index.html          # Estrutura limpa da aplicação
-├── style.css           # Estilização com variáveis e modais
+├── index.html          # UI e Modais (Start/Game Over)
+├── style.css           # Estilização Neon e Responsividade
 └── src/
-    ├── main.js         # Ponto de entrada (Controller/Bootstrap)
+    ├── main.js         # Ponto de entrada (Controller)
     ├── core/
-    │   ├── constants.js     # Única fonte de verdade para regras
-    │   ├── game-engine.js   # O cérebro blindado do jogo
-    │   ├── renderer.js      # Especialista em desenhos gráficos
-    │   ├── audio-manager.js # Sintetizador de sons dinâmicos
-    │   ├── input-manager.js # Abstração de controles
-    │   ├── event-emitter.js # Implementação do Observer Pattern
-    │   └── levels.js        # Configurações de fases (Data-driven)
-    ├── entities/
-    │   ├── chicken.js       # Classe do Jogador
-    │   └── vehicle.js       # Hierarquia polimórfica (Car, Truck, Moto)
-    └── factories/
-        └── vehicle-factory.js # Fábrica de obstáculos
+    │   ├── game-engine.js   # Cérebro blindado do sistema
+    │   ├── renderer.js      # Especialista visual (Canvas)
+    │   ├── audio-manager.js # Sintetizador sonoro procedural
+    │   ├── input-manager.js # Abstração de controles semânticos
+    │   ├── storage-manager.js # Persistência de Ranking
+    │   ├── levels.js        # Configurações de fases (Data-driven)
+    │   └── event-emitter.js # Implementação do Observer Pattern
+    └── entities/
+        ├── chicken.js       # Ator com física de vetores
+        ├── vehicle.js       # Hierarquia polimórfica de trânsito
+        └── collectible.js   # Itens e Bônus
 ```
 
 ---
 
-## 🛠️ Próximos Passos Sugeridos
+## 🕹️ Comandos
 
-- [ ] Implementar múltiplos níveis com layouts progressivos.
-- [ ] Adicionar suporte a toque para dispositivos móveis.
-- [ ] Implementar sistema de "High Score" usando `localStorage`.
-- [ ] Adicionar bônus coletáveis na pista.
+- **Setas / WASD**: Movimentar a Galinha.
+- **Espaço**: Ativar Semáforo (Custo: 1 Crédito).
 
 ---
 
-**Desenvolvido com excelência técnica e foco em Engenharia de Software.** 🚀
+**Desenvolvido com foco em excelência técnica, performance e diversão.** 🚀
